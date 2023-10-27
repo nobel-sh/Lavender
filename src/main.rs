@@ -6,9 +6,14 @@ pub mod token;
 use parser::Parser;
 use token::Token;
 
-use crate::{ast::Node, lexer::Lexer};
+use crate::lexer::lexer::Lexer;
 fn main() -> () {
-    let input = String::from("let y = 5555555;").bytes().collect();
+    let input = String::from(
+        "let y = 5555555;
+    return test;",
+    )
+    .bytes()
+    .collect();
     let mut lexer = Lexer::new(input);
     let mut lexed = match lexer.lex() {
         Ok(l) => l,
@@ -28,5 +33,5 @@ fn main() -> () {
 
     let mut parser = Parser::new(&mut lexed);
     let program = parser.parse_program();
-    println!("{}", program.string());
+    println!("{}", program);
 }
