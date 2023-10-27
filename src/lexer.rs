@@ -1,15 +1,13 @@
-use std::fmt::{self, Display};
-
 use crate::token::{Literal, Token, TokenType, KEYWORDS_MAP};
 
 pub struct Lexer {
     input: Vec<u8>,
-    tokens: Vec<Token>,
+    pub tokens: Vec<Token>,
     start: usize,
     current: usize,
     line: usize,
     column: usize,
-    errors: Vec<LexerError>,
+    errors: Vec<String>,
 }
 
 impl Lexer {
@@ -24,16 +22,23 @@ impl Lexer {
             errors: Vec::new(),
         }
     }
-    pub fn lex(&mut self) -> Result<&Lexer, Vec<LexerError>> {
+    pub fn lex(&mut self) -> Result<Vec<Token>, Vec<String>> {
         while !self.is_at_end() {
             self.start = self.current;
             self.scan_token();
         }
 
         if self.errors.is_empty() {
-            Ok(self)
+            self.tokens.push(Token::new(
+                TokenType::EOF,
+                String::from(""),
+                None,
+                self.line,
+                self.column,
+            ));
+            Ok(self.tokens.clone())
         } else {
-            Err(std::mem::take(&mut self.errors))
+            Err(self.errors.clone())
         }
     }
     fn scan_token(&mut self) {
@@ -102,11 +107,7 @@ impl Lexer {
                 } else if c.is_ascii_alphabetic() {
                     self.identifier();
                 } else {
-                    self.errors.push(LexerError::new(
-                        self.line,
-                        self.column,
-                        format!("Unexpected character: {}", c as char),
-                    ));
+                    self.push_error(format!("Unexpected character: {}", c as char));
                     self.add_token(TokenType::ILLEGAL, None);
                 }
             }
@@ -121,7 +122,8 @@ impl Lexer {
             self.advance();
         }
         if self.is_at_end() {
-            panic!("Unterminated string");
+            self.add_token(TokenType::ILLEGAL, None);
+            self.push_error(String::from("Unterminated string"));
         }
         self.advance();
         let value = self.input[self.start + 1..self.current - 1].to_vec();
@@ -155,11 +157,7 @@ impl Lexer {
             }
             _ => {
                 self.add_token(TokenType::ILLEGAL, None);
-                self.errors.push(LexerError::new(
-                    self.line,
-                    self.column,
-                    format!("Unexpected number: {}", num_literal),
-                ));
+                self.push_error(format!("Unexpected number: {}", num_literal));
             }
         }
     }
@@ -223,16 +221,12 @@ impl Lexer {
             self.column,
         ));
     }
-}
 
-impl Display for Lexer {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        writeln!(f, "Line: {}", self.line)?;
-        writeln!(f, "Tokens: ")?;
-        for token in &self.tokens {
-            writeln!(f, "{}", token)?;
-        }
-        Ok(())
+    fn push_error(&mut self, message: String) {
+        self.errors.push(format!(
+            "{} at line: {}, column: {}",
+            message, self.line, self.column
+        ));
     }
 }
 
@@ -247,32 +241,6 @@ impl std::fmt::Debug for Lexer {
     }
 }
 
-#[derive(Debug)]
-pub struct LexerError {
-    line: usize,
-    column: usize,
-    message: String,
-}
-
-impl LexerError {
-    pub fn new(line: usize, column: usize, message: String) -> Self {
-        LexerError {
-            line,
-            column,
-            message,
-        }
-    }
-}
-
-impl Display for LexerError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        writeln!(
-            f,
-            "{} at line: {}, column: {}",
-            self.message, self.line, self.column
-        )
-    }
-}
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -302,8 +270,10 @@ mod tests {
         let mut lexer = Lexer::new(input.bytes().collect());
         let errors = lexer.lex().unwrap_err();
         assert_eq!(errors.len(), 1);
-        assert_eq!(errors[0].message, "Unexpected character: %");
-        assert_eq!(errors[0].line, 1);
-        assert_eq!(errors[0].column, 11);
+        assert_eq!(
+            errors[0],
+            "Unexpected character: % at line: 1, column: 11
+        "
+        );
     }
 }
