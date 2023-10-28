@@ -8,12 +8,7 @@ use token::Token;
 
 use crate::lexer::lexer::Lexer;
 fn main() -> () {
-    let input = String::from(
-        "let y = 5555555;
-    return test;",
-    )
-    .bytes()
-    .collect();
+    let input = String::from("a +b*c;").bytes().collect();
     let mut lexer = Lexer::new(input);
     let mut lexed = match lexer.lex() {
         Ok(l) => l,
@@ -31,7 +26,7 @@ fn main() -> () {
         }
     };
 
-    let mut parser = Parser::new(&mut lexed);
+    let mut parser = Parser::new(lexed);
     let program = parser.parse_program();
     println!("{}", program);
 }

@@ -162,7 +162,7 @@ impl Lexer {
         }
     }
     fn identifier(&mut self) {
-        while self.peek_char().is_ascii_alphanumeric() {
+        while self.peek_char().is_ascii_alphanumeric() || self.peek_char() == b'_' {
             self.advance();
         }
         let value = self.input[self.start..self.current].to_vec();
