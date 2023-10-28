@@ -8,7 +8,17 @@ use token::Token;
 
 use crate::lexer::lexer::Lexer;
 fn main() -> () {
-    let input = String::from("a +b*c;").bytes().collect();
+    let input = String::from(
+        "
+    if (5 < 10) {
+        return true;
+    } else {
+        return false;
+    }
+    ",
+    )
+    .bytes()
+    .collect();
     let mut lexer = Lexer::new(input);
     let mut lexed = match lexer.lex() {
         Ok(l) => l,

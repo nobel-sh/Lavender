@@ -45,7 +45,7 @@ impl Precedence {
             token::TokenType::PLUS => Precedence::SUM,
             token::TokenType::LESS => Precedence::LESSGREATER,
             token::TokenType::GREATER => Precedence::LESSGREATER,
-            token::TokenType::EQUAL => Precedence::EQUALS,
+            token::TokenType::EQUALEQUAL => Precedence::EQUALS,
             token::TokenType::BANGEQUAL => Precedence::EQUALS,
             _ => Precedence::LOWEST,
         }
@@ -199,7 +199,7 @@ impl Parser {
             TokenType::IDENTIFIER => Parser::parse_identifier_expression,
             TokenType::INT => Parser::parse_integer_literal,
             TokenType::STRING => Parser::parse_string_literal,
-            TokenType::BOOL => Parser::parse_boolean_literal,
+            TokenType::TRUE | TokenType::FALSE => Parser::parse_boolean_literal,
             TokenType::BANG | TokenType::MINUS => Parser::parse_prefix_literal,
             TokenType::LPAREN => Parser::parse_grouped_expression,
             TokenType::IF => Parser::parse_if_expression,
@@ -214,7 +214,7 @@ impl Parser {
             | TokenType::MINUS
             | TokenType::SLASH
             | TokenType::ASTERISK
-            | TokenType::EQUAL
+            | TokenType::EQUALEQUAL
             | TokenType::BANGEQUAL
             | TokenType::LESS
             | TokenType::GREATER => Parser::parse_infix_expression,
@@ -278,13 +278,13 @@ impl Parser {
 
     fn parse_if_expression(&mut self) -> Result<Expression, ParserError> {
         self.next_token();
-        if !self.expect_peek(token::TokenType::LPAREN) {
+        if !self.current_token_is(token::TokenType::LPAREN) {
             return Err(ParserError {
                 message: String::from("expected ("),
             });
         }
         self.next_token();
-        let condition = self.parse_expression(Precedence::LOWEST).unwrap();
+        let if_condition = self.parse_expression(Precedence::LOWEST).unwrap();
         if !self.expect_peek(token::TokenType::RPAREN) {
             return Err(ParserError {
                 message: String::from("expected )"),
@@ -308,7 +308,7 @@ impl Parser {
         }
         Ok(Expression::IfExpression(IfExpression {
             token: self.current_token.clone(),
-            condition: Box::new(condition),
+            condition: Box::new(if_condition),
             consequence: Box::new(consequence),
             alternative,
         }))
