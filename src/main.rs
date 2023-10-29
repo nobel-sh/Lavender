@@ -1,5 +1,8 @@
 pub mod ast;
+pub mod environment;
+pub mod evaluator;
 pub mod lexer;
+pub mod object;
 pub mod parser;
 pub mod token;
 
@@ -9,13 +12,13 @@ use token::Token;
 use crate::lexer::lexer::Lexer;
 fn main() -> () {
     let input = String::from(
-        "
-    if (5 < 10) {
-        return true;
-    } else {
-        return false;
-    }
-    ",
+        r#"
+        if (2 < 1) {
+            10;
+        } else {
+            20;
+        }
+    "#,
     )
     .bytes()
     .collect();
@@ -39,4 +42,7 @@ fn main() -> () {
     let mut parser = Parser::new(lexed);
     let program = parser.parse_program();
     println!("{}", program);
+    let mut env = environment::Environment::new();
+    let result = evaluator::eval_program(&program, &mut env).unwrap();
+    println!("{:?}", result);
 }
