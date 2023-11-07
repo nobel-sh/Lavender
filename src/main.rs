@@ -13,17 +13,16 @@ use crate::lexer::lexer::Lexer;
 fn main() -> () {
     let input = String::from(
         r#"
-        if (2 < 1) {
-            10;
-        } else {
-            20;
-        }
+        let add = func (x,y) {
+            return x+y;
+        };
+        add(1,2);
     "#,
     )
     .bytes()
     .collect();
     let mut lexer = Lexer::new(input);
-    let mut lexed = match lexer.lex() {
+    let lexed = match lexer.lex() {
         Ok(l) => l,
         Err(errors) => {
             for e in errors {
@@ -38,11 +37,15 @@ fn main() -> () {
             )]
         }
     };
-
     let mut parser = Parser::new(lexed);
     let program = parser.parse_program();
-    println!("{}", program);
+    // println!("{}", program);
     let mut env = environment::Environment::new();
-    let result = evaluator::eval_program(&program, &mut env).unwrap();
-    println!("{:?}", result);
+    // let result = evaluator::eval_program(&program, &mut env).unwrap();
+    println!("**********");
+    match evaluator::eval_program(&program, &mut env) {
+        Some(r) => println!("{}", r),
+        None => println!("None"),
+    }
+    // println!("{:?}", result);
 }

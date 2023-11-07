@@ -1,7 +1,8 @@
 use crate::ast;
 use crate::ast::Expression;
 use crate::environment::Environment;
-use crate::object::{FunctionObject, Object};
+use crate::object::Literal::{Boolean, Integer, String};
+use crate::object::{FunctionObject, Object}; //Direct import of enum variants
 
 pub fn eval(node: &ast::Node, env: &mut Environment) -> Option<Object> {
     match node {
@@ -16,7 +17,7 @@ pub fn eval_program(program: &ast::Program, env: &mut Environment) -> Option<Obj
     for s in &program.statements {
         result = eval_statement(s, env);
         match result {
-            Some(Object::Return(val)) => return Some(Object::Return(val)),
+            Some(Object::Return(_)) => return result,
             Some(_) => {}
             None => {}
         }
@@ -28,16 +29,18 @@ fn eval_statement(statement: &ast::Statement, env: &mut Environment) -> Option<O
     match statement {
         ast::Statement::LetStatement(l) => {
             let val = eval_expression(&l.value, env);
+            // println!("{:?}", val);
             match val {
                 Some(v) => env.set(l.name.value.clone(), &v),
-                None => None,
+                None => Some(Object::Null),
             }
         }
         ast::Statement::ReturnStatement(r) => {
             let val = eval_expression(&r.return_value, env);
+            println!("{:?}", val);
             match val {
                 Some(v) => Some(Object::Return(Box::new(v))),
-                None => None,
+                None => Some(Object::Null),
             }
         }
         ast::Statement::ExpressionStatement(e) => eval_expression(&e.expression, env),
@@ -92,9 +95,9 @@ fn eval_identifier(identifier: &ast::Identifier, env: &mut Environment) -> Optio
 
 fn eval_literal(literal: &ast::Literal) -> Option<Object> {
     match literal {
-        ast::Literal::Integer(i) => Some(Object::Integer(*i)),
-        ast::Literal::Boolean(b) => Some(Object::Boolean(*b)),
-        ast::Literal::String(s) => Some(Object::String(s.clone())),
+        ast::Literal::Integer(i) => Some(Object::Literal(Integer(*i))),
+        ast::Literal::Boolean(b) => Some(Object::Literal(Boolean(*b))),
+        ast::Literal::String(s) => Some(Object::Literal(String(s.clone()))),
     }
 }
 
@@ -108,53 +111,59 @@ fn eval_prefix_expression(operator: &str, right: &Object) -> Option<Object> {
 
 fn eval_bang_operator_expression(right: &Object) -> Option<Object> {
     match right {
-        Object::Boolean(b) => Some(Object::Boolean(!b)),
-        Object::Null => Some(Object::Boolean(true)),
-        _ => Some(Object::Boolean(false)),
+        Object::Literal(Boolean(b)) => Some(Object::Literal(Boolean(!b))),
+        Object::Null => Some(Object::Literal(Boolean(true))),
+        _ => Some(Object::Literal(Boolean(false))),
     }
 }
 
 fn eval_minus_prefix_operator_expression(right: &Object) -> Option<Object> {
     match right {
-        Object::Integer(i) => Some(Object::Integer(-i)),
+        Object::Literal(Integer(i)) => Some(Object::Literal(Integer(-i))),
         _ => None,
     }
 }
 
 fn eval_infix_expression(operator: &str, left: &Object, right: &Object) -> Option<Object> {
     match (left, right) {
-        (Object::Integer(l), Object::Integer(r)) => eval_integer_infix_expression(operator, l, r),
-        (Object::Boolean(l), Object::Boolean(r)) => eval_boolean_infix_expression(operator, l, r),
-        (Object::String(l), Object::String(r)) => eval_string_infix_expression(operator, l, r),
+        (Object::Literal(Integer(l)), Object::Literal(Integer(r))) => {
+            eval_integer_infix_expression(operator, l, r)
+        }
+        (Object::Literal(Boolean(l)), Object::Literal(Boolean(r))) => {
+            eval_boolean_infix_expression(operator, l, r)
+        }
+        (Object::Literal(String(l)), Object::Literal(String(r))) => {
+            eval_string_infix_expression(operator, l, r)
+        }
         _ => None,
     }
 }
 
 fn eval_integer_infix_expression(operator: &str, left: &i64, right: &i64) -> Option<Object> {
     match operator {
-        "+" => Some(Object::Integer(left + right)),
-        "-" => Some(Object::Integer(left - right)),
-        "*" => Some(Object::Integer(left * right)),
-        "/" => Some(Object::Integer(left / right)),
-        "<" => Some(Object::Boolean(left < right)),
-        ">" => Some(Object::Boolean(left > right)),
-        "==" => Some(Object::Boolean(left == right)),
-        "!=" => Some(Object::Boolean(left != right)),
+        "+" => Some(Object::Literal(Integer(left + right))),
+        "-" => Some(Object::Literal(Integer(left - right))),
+        "*" => Some(Object::Literal(Integer(left * right))),
+        "/" => Some(Object::Literal(Integer(left / right))),
+        "<" => Some(Object::Literal(Boolean(left < right))),
+        ">" => Some(Object::Literal(Boolean(left > right))),
+        "==" => Some(Object::Literal(Boolean(left == right))),
+        "!=" => Some(Object::Literal(Boolean(left != right))),
         _ => None,
     }
 }
 
 fn eval_boolean_infix_expression(operator: &str, left: &bool, right: &bool) -> Option<Object> {
     match operator {
-        "==" => Some(Object::Boolean(left == right)),
-        "!=" => Some(Object::Boolean(left != right)),
+        "==" => Some(Object::Literal(Boolean(left == right))),
+        "!=" => Some(Object::Literal(Boolean(left != right))),
         _ => None,
     }
 }
 
 fn eval_string_infix_expression(operator: &str, left: &str, right: &str) -> Option<Object> {
     match operator {
-        "+" => Some(Object::String(format!("{}{}", left, right))),
+        "+" => Some(Object::Literal(String(format!("{}{}", left, right)))),
         _ => None,
     }
 }
@@ -162,7 +171,7 @@ fn eval_string_infix_expression(operator: &str, left: &str, right: &str) -> Opti
 fn eval_if_expression(if_expression: &ast::IfExpression, env: &mut Environment) -> Option<Object> {
     let condition = eval_expression(&if_expression.condition, env);
     match condition {
-        Some(Object::Boolean(b)) => {
+        Some(Object::Literal(Boolean(b))) => {
             if b {
                 eval_statement(&if_expression.consequence, env)
             } else {
@@ -201,9 +210,12 @@ fn eval_function_call_expression(
     let function = eval_expression(&function_call_expression.function, env);
     let args = eval_expressions(&function_call_expression.arguments, env);
     match (function, args) {
-        (Some(Object::Function(f)), Some(a)) => {
-            let mut extended_env = Environment::new_enclosed_environment(f.env);
-            let evaluated = eval_statement(&f.body, &mut extended_env);
+        (Some(Object::Function(function)), Some(arg)) => {
+            let mut extended_env = Environment::new_enclosed_environment(function.env);
+            for (i, param) in function.parameters.iter().enumerate() {
+                extended_env.set(param.clone(), &arg[i]);
+            }
+            let evaluated = eval_statement(&function.body, &mut extended_env);
             match evaluated {
                 Some(Object::Return(v)) => Some(*v),
                 _ => None,
