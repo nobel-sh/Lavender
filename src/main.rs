@@ -12,12 +12,19 @@ use token::Token;
 use crate::lexer::lexer::Lexer;
 fn main() -> () {
     let input = String::from(
+        // func
+        //TODO: add string operations
         r#"
-        let add = func (x,y) {
-            return x+y;
-        };
-        add(1,2);
-    "#,
+        let first = 11;
+        let second = 10;
+        if (first > second){
+            "greater"
+        }else if (first < second){
+            "less"
+        }else{
+            "equal"
+        }
+"#,
     )
     .bytes()
     .collect();

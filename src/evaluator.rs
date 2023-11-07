@@ -37,7 +37,6 @@ fn eval_statement(statement: &ast::Statement, env: &mut Environment) -> Option<O
         }
         ast::Statement::ReturnStatement(r) => {
             let val = eval_expression(&r.return_value, env);
-            println!("{:?}", val);
             match val {
                 Some(v) => Some(Object::Return(Box::new(v))),
                 None => Some(Object::Null),
@@ -149,6 +148,8 @@ fn eval_integer_infix_expression(operator: &str, left: &i64, right: &i64) -> Opt
         ">" => Some(Object::Literal(Boolean(left > right))),
         "==" => Some(Object::Literal(Boolean(left == right))),
         "!=" => Some(Object::Literal(Boolean(left != right))),
+        ">=" => Some(Object::Literal(Boolean(left >= right))),
+        "<=" => Some(Object::Literal(Boolean(left <= right))),
         _ => None,
     }
 }

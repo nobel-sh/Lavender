@@ -45,6 +45,8 @@ impl Precedence {
             token::TokenType::PLUS => Precedence::SUM,
             token::TokenType::LESS => Precedence::LESSGREATER,
             token::TokenType::GREATER => Precedence::LESSGREATER,
+            token::TokenType::LESSEQUAL => Precedence::LESSGREATER,
+            token::TokenType::GREATEREQUAL => Precedence::LESSGREATER,
             token::TokenType::EQUALEQUAL => Precedence::EQUALS,
             token::TokenType::BANGEQUAL => Precedence::EQUALS,
             _ => Precedence::LOWEST,
@@ -85,7 +87,6 @@ impl Parser {
     }
 
     fn parse_statement(&mut self) -> Option<Statement> {
-        println!("parse_statement: {:?}", self.current_token.token_type);
         match self.current_token.token_type {
             token::TokenType::LET => self.parse_let_statement(),
             token::TokenType::RETURN => self.parse_return_statement(),
@@ -217,7 +218,9 @@ impl Parser {
             | TokenType::EQUALEQUAL
             | TokenType::BANGEQUAL
             | TokenType::LESS
-            | TokenType::GREATER => Parser::parse_infix_expression,
+            | TokenType::GREATER
+            | TokenType::LESSEQUAL
+            | TokenType::GREATEREQUAL => Parser::parse_infix_expression,
             TokenType::LPAREN => Parser::parse_call_expression,
             _ => return None,
         })
@@ -299,7 +302,9 @@ impl Parser {
         let mut alternative = None;
         if self.peek_token_is(token::TokenType::ELSE) {
             self.next_token();
-            if !self.expect_peek(token::TokenType::LBRACE) {
+            if !self.expect_peek(token::TokenType::LBRACE)
+                && !self.peek_token_is(token::TokenType::IF)
+            {
                 return Err(ParserError {
                     message: String::from("expected {"),
                 });
