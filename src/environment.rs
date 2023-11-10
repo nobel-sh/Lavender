@@ -4,21 +4,21 @@ use std::{cell::RefCell, collections::HashMap, rc::Rc};
 #[derive(Debug, Clone)]
 pub struct Environment {
     store: HashMap<String, Object>,
-    outer: Option<RefCell<Rc<Environment>>>,
+    outer: Option<Rc<RefCell<Environment>>>,
 }
 
 impl Environment {
-    pub fn new() -> Self {
+    pub fn new() -> Environment {
         Environment {
             store: HashMap::new(),
             outer: None,
         }
     }
 
-    pub fn new_enclosed_environment(outer: Environment) -> Self {
+    pub fn new_enclosed_environment(outer: Rc<RefCell<Environment>>) -> Self {
         Environment {
             store: HashMap::new(),
-            outer: Some(RefCell::new(Rc::new(outer))),
+            outer: Some(outer),
         }
     }
 

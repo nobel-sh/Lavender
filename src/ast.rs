@@ -79,9 +79,9 @@ pub struct IfExpression {
 
 impl Display for IfExpression {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let mut result = String::from("if");
+        let mut result = String::from("if (");
         result.push_str(&self.condition.to_string());
-        result.push_str(" ");
+        result.push_str(") ");
         result.push_str(&self.consequence.to_string());
         if let Some(alt) = &self.alternative {
             result.push_str("else ");

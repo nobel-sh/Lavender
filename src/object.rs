@@ -1,4 +1,6 @@
+use std::cell::RefCell;
 use std::fmt::{Debug, Display};
+use std::rc::Rc;
 
 use crate::ast::*;
 use crate::environment::Environment;
@@ -7,7 +9,7 @@ use crate::environment::Environment;
 pub struct FunctionObject {
     pub parameters: Vec<String>,
     pub body: Statement,
-    pub env: Environment,
+    pub env: Rc<RefCell<Environment>>,
 }
 
 impl Display for FunctionObject {
@@ -34,7 +36,7 @@ impl Display for Literal {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub enum Object {
     Literal(Literal),
     Function(FunctionObject),
@@ -43,6 +45,19 @@ pub enum Object {
 }
 
 impl Display for Object {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Object::Literal(lit) => write!(f, "{}", lit),
+            Object::Function(func) => write!(f, "{}", func),
+            Object::Return(obj) => {
+                write!(f, "return {}", obj)
+            }
+            Object::Null => write!(f, "null"),
+        }
+    }
+}
+
+impl Debug for Object {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Object::Literal(lit) => write!(f, "{}", lit),

@@ -6,6 +6,8 @@ pub mod object;
 pub mod parser;
 pub mod token;
 
+use environment::Environment;
+use evaluator::Evaluator;
 use parser::Parser;
 use token::Token;
 
@@ -15,21 +17,23 @@ fn main() -> () {
         // func
         //TODO: add string operations
         r#"
-        let first = 11;
-        let second = 10;
-        if (first > second){
-            "greater"
-        }else if (first < second){
-            "less"
-        }else{
-            "equal"
-        }
+        let fib = func (x) {
+            if (x == 0) {
+                return 0;
+            } else {
+                if (x == 1) {
+                    return 1;
+                } else {
+                    return fib(x - 1) + fib(x - 2);
+                }
+            }
+        };
+        fib(20)
 "#,
     )
     .bytes()
     .collect();
-    let mut lexer = Lexer::new(input);
-    let lexed = match lexer.lex() {
+    let tokens = match Lexer::new(input).lex() {
         Ok(l) => l,
         Err(errors) => {
             for e in errors {
@@ -44,15 +48,9 @@ fn main() -> () {
             )]
         }
     };
-    let mut parser = Parser::new(lexed);
-    let program = parser.parse_program();
-    // println!("{}", program);
-    let mut env = environment::Environment::new();
-    // let result = evaluator::eval_program(&program, &mut env).unwrap();
+    let program = Parser::new(tokens).parse_program();
     println!("**********");
-    match evaluator::eval_program(&program, &mut env) {
-        Some(r) => println!("{}", r),
-        None => println!("None"),
-    }
-    // println!("{:?}", result);
+    let env = Environment::new();
+    let result = Evaluator::new(env).eval(&program);
+    println!("{:?}", result);
 }
