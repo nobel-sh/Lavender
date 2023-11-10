@@ -22,6 +22,7 @@ impl Display for FunctionObject {
 #[derive(Debug, Clone)]
 pub enum Literal {
     Integer(i64),
+    Float(f64),
     Boolean(bool),
     String(String),
 }
@@ -30,6 +31,7 @@ impl Display for Literal {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Literal::Integer(i) => write!(f, "{}", i),
+            Literal::Float(fl) => write!(f, "{}", fl),
             Literal::Boolean(b) => write!(f, "{}", b),
             Literal::String(s) => write!(f, "{}", s),
         }

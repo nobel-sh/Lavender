@@ -1,10 +1,10 @@
 use crate::ast::Expression;
 use crate::ast::*;
 use crate::environment::Environment;
-use crate::object::Literal::{Boolean, Integer, String};
+use crate::object::Literal::{Boolean, Float, Integer, String}; //Direct import of enum variants
 use crate::object::{FunctionObject, Object};
 use std::cell::RefCell;
-use std::rc::Rc; //Direct import of enum variants
+use std::rc::Rc;
 
 pub struct Evaluator {
     env: Rc<RefCell<Environment>>,
@@ -129,6 +129,7 @@ impl Evaluator {
     fn eval_literal(&mut self, literal: &Literal) -> Option<Object> {
         match literal {
             Literal::Integer(i) => Some(Object::Literal(Integer(*i))),
+            Literal::Float(f) => Some(Object::Literal(Float(*f))),
             Literal::Boolean(b) => Some(Object::Literal(Boolean(*b))),
             Literal::String(s) => Some(Object::Literal(String(s.clone()))),
         }
@@ -155,6 +156,7 @@ impl Evaluator {
             },
             "-" => match right {
                 Object::Literal(Integer(value)) => Some(Object::Literal(Integer(-value))),
+                Object::Literal(Float(value)) => Some(Object::Literal(Float(-value))),
                 _ => None,
             },
             _ => None,
@@ -182,6 +184,9 @@ impl Evaluator {
             (Object::Literal(Integer(l)), Object::Literal(Integer(r))) => {
                 self.eval_integer_infix_expression(operator, l, r)
             }
+            (Object::Literal(Float(l)), Object::Literal(Float(r))) => {
+                self.eval_float_infix_expression(operator, l, r)
+            }
             (Object::Literal(Boolean(l)), Object::Literal(Boolean(r))) => {
                 self.eval_boolean_infix_expression(operator, l, r)
             }
@@ -203,6 +208,31 @@ impl Evaluator {
             "-" => Object::Literal(Integer(left - right)),
             "*" => Object::Literal(Integer(left * right)),
             "/" => Object::Literal(Integer(left / right)),
+            "<" => Object::Literal(Boolean(left < right)),
+            ">" => Object::Literal(Boolean(left > right)),
+            "==" => Object::Literal(Boolean(left == right)),
+            "!=" => Object::Literal(Boolean(left != right)),
+            ">=" => Object::Literal(Boolean(left >= right)),
+            "<=" => Object::Literal(Boolean(left <= right)),
+            _ => {
+                return None;
+            }
+        };
+        Some(result)
+    }
+
+    //TODO: remove code duplication
+    fn eval_float_infix_expression(
+        &mut self,
+        operator: &str,
+        left: &f64,
+        right: &f64,
+    ) -> Option<Object> {
+        let result = match operator {
+            "+" => Object::Literal(Float(left + right)),
+            "-" => Object::Literal(Float(left - right)),
+            "*" => Object::Literal(Float(left * right)),
+            "/" => Object::Literal(Float(left / right)),
             "<" => Object::Literal(Boolean(left < right)),
             ">" => Object::Literal(Boolean(left > right)),
             "==" => Object::Literal(Boolean(left == right)),

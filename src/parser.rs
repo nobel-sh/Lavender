@@ -145,7 +145,10 @@ impl Parser {
 
     fn parse_expression(&mut self, precedence: Precedence) -> Result<Expression, ParserError> {
         let prefix = self.parse_prefix().ok_or_else(|| ParserError {
-            message: String::from("no prefix parse function found"),
+            message: format!(
+                "no prefix parse function for {:?}",
+                self.current_token.token_type
+            ),
         });
         let mut left_exp = prefix.unwrap()(self);
         while !self.peek_token_is(token::TokenType::SEMICOLON)
@@ -199,6 +202,7 @@ impl Parser {
         Some(match &self.current_token.token_type {
             TokenType::IDENTIFIER => Parser::parse_identifier_expression,
             TokenType::INT => Parser::parse_integer_literal,
+            TokenType::FLOAT => Parser::parse_float_literal,
             TokenType::STRING => Parser::parse_string_literal,
             TokenType::TRUE | TokenType::FALSE => Parser::parse_boolean_literal,
             TokenType::BANG | TokenType::MINUS => Parser::parse_prefix_literal,
@@ -237,6 +241,11 @@ impl Parser {
     fn parse_integer_literal(&mut self) -> Result<Expression, ParserError> {
         let value = self.current_token.lexeme.parse::<i64>().unwrap();
         Ok(Expression::Literal(Literal::Integer(value)))
+    }
+
+    fn parse_float_literal(&mut self) -> Result<Expression, ParserError> {
+        let value = self.current_token.lexeme.parse::<f64>().unwrap();
+        Ok(Expression::Literal(Literal::Float(value)))
     }
 
     fn parse_string_literal(&mut self) -> Result<Expression, ParserError> {
