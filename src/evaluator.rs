@@ -11,16 +11,18 @@ pub struct Evaluator {
 }
 
 type RustString = std::string::String;
+
+pub type EvaluatorResult<T> = Result<T, EvaluatorError>;
+
+#[derive(Debug, Clone)]
 pub struct EvaluatorError {
     pub message: RustString,
 }
-
 impl EvaluatorError {
     pub fn new(message: RustString) -> Self {
         EvaluatorError { message }
     }
 }
-
 impl std::fmt::Display for EvaluatorError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.message.clone())
@@ -34,20 +36,20 @@ impl Evaluator {
         }
     }
 
-    pub fn eval(&mut self, program: &Program) -> Option<Object> {
-        let mut result = None;
+    pub fn eval(&mut self, program: &Program) -> EvaluatorResult<Object> {
+        let mut result = Ok(Object::Null);
         for statement in &program.statements {
             result = self.eval_statement(statement);
             match result {
-                Some(Object::Return(_)) => return result,
-                Some(_) => {}
-                None => {}
+                Ok(Object::Return(v)) => return Ok(*v),
+                Ok(_) => {}
+                Err(e) => return Err(e),
             }
         }
         result
     }
 
-    fn eval_statement(&mut self, statement: &Statement) -> Option<Object> {
+    fn eval_statement(&mut self, statement: &Statement) -> EvaluatorResult<Object> {
         match statement {
             Statement::LetStatement(let_statement) => self.eval_let_statement(let_statement),
             Statement::ReturnStatement(return_statement) => {
@@ -60,46 +62,49 @@ impl Evaluator {
         }
     }
 
-    fn eval_let_statement(&mut self, let_statement: &LetStatement) -> Option<Object> {
-        let val = self.eval_expression(&let_statement.value);
-        match val {
-            Some(v) => self
-                .env
-                .borrow_mut()
-                .set(let_statement.name.value.clone(), &v),
-            None => Some(Object::Null),
-        }
+    fn eval_let_statement(&mut self, let_statement: &LetStatement) -> EvaluatorResult<Object> {
+        let val = self.eval_expression(&let_statement.value)?;
+
+        self.env
+            .borrow_mut()
+            .set(let_statement.name.value.clone(), &val);
+        Ok(Object::Null)
     }
 
-    fn eval_return_statement(&mut self, return_statement: &ReturnStatement) -> Option<Object> {
+    fn eval_return_statement(
+        &mut self,
+        return_statement: &ReturnStatement,
+    ) -> EvaluatorResult<Object> {
         let val = self.eval_expression(&return_statement.return_value);
         match val {
-            Some(v) => Some(Object::Return(Box::new(v))),
-            None => Some(Object::Null),
+            Ok(v) => Ok(Object::Return(Box::new(v))),
+            Err(e) => Err(e),
         }
     }
 
     fn eval_expression_statement(
         &mut self,
         expression_statement: &ExpressionStatement,
-    ) -> Option<Object> {
+    ) -> EvaluatorResult<Object> {
         self.eval_expression(&expression_statement.expression)
     }
 
-    fn eval_block_statement(&mut self, block_statement: &BlockStatement) -> Option<Object> {
-        let mut result = None;
+    fn eval_block_statement(
+        &mut self,
+        block_statement: &BlockStatement,
+    ) -> EvaluatorResult<Object> {
+        let mut result = Ok(Object::Null);
         for statement in &block_statement.statements {
             result = self.eval_statement(statement);
             match result {
-                Some(Object::Return(_)) => return result,
-                Some(_) => {}
-                None => {}
+                Ok(Object::Return(_)) | Err(_) => return result,
+                Ok(_) => {}
             }
         }
         result
     }
 
-    fn eval_expression(&mut self, expression: &Expression) -> Option<Object> {
+    fn eval_expression(&mut self, expression: &Expression) -> EvaluatorResult<Object> {
         match expression {
             Expression::Identifier(identifier) => self.eval_identifier(identifier),
             Expression::Literal(literal) => self.eval_literal(literal),
@@ -110,6 +115,9 @@ impl Evaluator {
                 self.eval_infix_expression(infix_expression)
             }
             Expression::IfExpression(if_expression) => self.eval_if_expression(if_expression),
+            Expression::WhileExpression(while_expression) => {
+                self.eval_while_expression(while_expression)
+            }
             Expression::FunctionExpression(function_expression) => {
                 self.eval_function_expression(function_expression)
             }
@@ -119,27 +127,30 @@ impl Evaluator {
         }
     }
 
-    fn eval_identifier(&mut self, identifier: &Identifier) -> Option<Object> {
+    fn eval_identifier(&mut self, identifier: &Identifier) -> EvaluatorResult<Object> {
         match self.env.borrow().get(&identifier.value) {
-            Some(val) => Some(val),
-            None => None,
+            Ok(v) => Ok(v),
+            Err(e) => Err(e),
         }
     }
 
-    fn eval_literal(&mut self, literal: &Literal) -> Option<Object> {
+    fn eval_literal(&mut self, literal: &Literal) -> EvaluatorResult<Object> {
         match literal {
-            Literal::Integer(i) => Some(Object::Literal(Integer(*i))),
-            Literal::Float(f) => Some(Object::Literal(Float(*f))),
-            Literal::Boolean(b) => Some(Object::Literal(Boolean(*b))),
-            Literal::String(s) => Some(Object::Literal(String(s.clone()))),
+            Literal::Integer(i) => Ok(Object::Literal(Integer(*i))),
+            Literal::Float(f) => Ok(Object::Literal(Float(*f))),
+            Literal::Boolean(b) => Ok(Object::Literal(Boolean(*b))),
+            Literal::String(s) => Ok(Object::Literal(String(s.clone()))),
         }
     }
 
-    fn eval_prefix_expression(&mut self, prefix_expression: &PrefixExpression) -> Option<Object> {
+    fn eval_prefix_expression(
+        &mut self,
+        prefix_expression: &PrefixExpression,
+    ) -> EvaluatorResult<Object> {
         let right = self.eval_expression(&prefix_expression.right);
         match right {
-            Some(r) => self.eval_prefix_expression_operator(&prefix_expression.operator, &r),
-            None => None,
+            Ok(r) => self.eval_prefix_expression_operator(&prefix_expression.operator, &r),
+            Err(e) => Err(e),
         }
     }
 
@@ -147,31 +158,35 @@ impl Evaluator {
         &mut self,
         operator: &str,
         right: &Object,
-    ) -> Option<Object> {
+    ) -> EvaluatorResult<Object> {
         match operator {
             "!" => match right {
-                Object::Literal(Boolean(value)) => Some(Object::Literal(Boolean(!value))),
-                Object::Null => Some(Object::Literal(Boolean(true))),
-                _ => Some(Object::Literal(Boolean(false))),
+                Object::Literal(Boolean(value)) => Ok(Object::Literal(Boolean(!value))),
+                Object::Null => Ok(Object::Literal(Boolean(true))),
+                _ => Ok(Object::Literal(Boolean(false))),
             },
             "-" => match right {
-                Object::Literal(Integer(value)) => Some(Object::Literal(Integer(-value))),
-                Object::Literal(Float(value)) => Some(Object::Literal(Float(-value))),
-                _ => None,
+                Object::Literal(Integer(value)) => Ok(Object::Literal(Integer(-value))),
+                Object::Literal(Float(value)) => Ok(Object::Literal(Float(-value))),
+                _ => Err(EvaluatorError::new(format!(
+                    "Cannot negate token : {}",
+                    right
+                ))),
             },
-            _ => None,
+            _ => Err(EvaluatorError::new(format!(
+                "Unknown operator: {}{}",
+                operator, right
+            ))),
         }
     }
 
-    fn eval_infix_expression(&mut self, infix_expression: &InfixExpression) -> Option<Object> {
-        let left = self.eval_expression(&infix_expression.left);
-        let right = self.eval_expression(&infix_expression.right);
-        match (left, right) {
-            (Some(l), Some(r)) => {
-                self.eval_infix_expression_operator(&infix_expression.operator, &l, &r)
-            }
-            _ => None,
-        }
+    fn eval_infix_expression(
+        &mut self,
+        infix_expression: &InfixExpression,
+    ) -> EvaluatorResult<Object> {
+        let left = self.eval_expression(&infix_expression.left)?;
+        let right = self.eval_expression(&infix_expression.right)?;
+        self.eval_infix_expression_operator(&infix_expression.operator, &left, &right)
     }
 
     fn eval_infix_expression_operator(
@@ -179,7 +194,7 @@ impl Evaluator {
         operator: &str,
         left: &Object,
         right: &Object,
-    ) -> Option<Object> {
+    ) -> EvaluatorResult<Object> {
         match (left, right) {
             (Object::Literal(Integer(l)), Object::Literal(Integer(r))) => {
                 self.eval_integer_infix_expression(operator, l, r)
@@ -193,7 +208,10 @@ impl Evaluator {
             (Object::Literal(String(l)), Object::Literal(String(r))) => {
                 self.eval_string_infix_expression(operator, l, r)
             }
-            _ => None,
+            _ => Err(EvaluatorError::new(format!(
+                "Illegal operation : {} {} {}",
+                left, operator, right
+            ))),
         }
     }
 
@@ -202,7 +220,7 @@ impl Evaluator {
         operator: &str,
         left: &i64,
         right: &i64,
-    ) -> Option<Object> {
+    ) -> EvaluatorResult<Object> {
         let result = match operator {
             "+" => Object::Literal(Integer(left + right)),
             "-" => Object::Literal(Integer(left - right)),
@@ -215,10 +233,13 @@ impl Evaluator {
             ">=" => Object::Literal(Boolean(left >= right)),
             "<=" => Object::Literal(Boolean(left <= right)),
             _ => {
-                return None;
+                return Err(EvaluatorError::new(format!(
+                    "Illegal Operation: {} {} {}",
+                    left, operator, right
+                )));
             }
         };
-        Some(result)
+        Ok(result)
     }
 
     //TODO: remove code duplication
@@ -227,7 +248,7 @@ impl Evaluator {
         operator: &str,
         left: &f64,
         right: &f64,
-    ) -> Option<Object> {
+    ) -> EvaluatorResult<Object> {
         let result = match operator {
             "+" => Object::Literal(Float(left + right)),
             "-" => Object::Literal(Float(left - right)),
@@ -240,10 +261,13 @@ impl Evaluator {
             ">=" => Object::Literal(Boolean(left >= right)),
             "<=" => Object::Literal(Boolean(left <= right)),
             _ => {
-                return None;
+                return Err(EvaluatorError::new(format!(
+                    "Unknown operator: {} {} {}",
+                    left, operator, right
+                )));
             }
         };
-        Some(result)
+        Ok(result)
     }
 
     fn eval_boolean_infix_expression(
@@ -251,11 +275,14 @@ impl Evaluator {
         operator: &str,
         left: &bool,
         right: &bool,
-    ) -> Option<Object> {
+    ) -> EvaluatorResult<Object> {
         match operator {
-            "==" => Some(Object::Literal(Boolean(left == right))),
-            "!=" => Some(Object::Literal(Boolean(left != right))),
-            _ => None,
+            "==" => Ok(Object::Literal(Boolean(left == right))),
+            "!=" => Ok(Object::Literal(Boolean(left != right))),
+            _ => Err(EvaluatorError::new(format!(
+                "Unknown operator: {} {} {}",
+                left, operator, right
+            ))),
         }
     }
 
@@ -264,34 +291,58 @@ impl Evaluator {
         operator: &str,
         left: &str,
         right: &str,
-    ) -> Option<Object> {
+    ) -> EvaluatorResult<Object> {
         match operator {
-            "+" => Some(Object::Literal(String(format!("{}{}", left, right)))),
-            _ => None,
+            "+" => Ok(Object::Literal(String(format!("{}{}", left, right)))),
+            _ => Err(EvaluatorError::new(format!(
+                "Unknown operator: {} {} {}",
+                left, operator, right
+            ))),
         }
     }
 
-    fn eval_if_expression(&mut self, if_expression: &IfExpression) -> Option<Object> {
+    fn eval_if_expression(&mut self, if_expression: &IfExpression) -> EvaluatorResult<Object> {
         let condition = self.eval_expression(&if_expression.condition);
         match condition {
-            Some(Object::Literal(Boolean(b))) => {
+            Ok(Object::Literal(Boolean(b))) => {
                 if b {
                     self.eval_statement(&if_expression.consequence)
                 } else {
                     match &if_expression.alternative {
                         Some(alt) => self.eval_statement(alt),
-                        None => Some(Object::Null),
+                        None => Ok(Object::Null),
                     }
                 }
             }
-            _ => None,
+            Ok(_) => Err(EvaluatorError::new(format!(
+                "Condition not a boolean: {}",
+                if_expression.condition
+            ))),
+            Err(e) => Err(e),
         }
+    }
+
+    fn eval_while_expression(
+        &mut self,
+        while_expression: &WhileExpression,
+    ) -> EvaluatorResult<Object> {
+        let mut result = Ok(Object::Null);
+        while let Ok(Object::Literal(Boolean(b))) =
+            self.eval_expression(&while_expression.condition)
+        {
+            if b {
+                result = self.eval_statement(&while_expression.body);
+            } else {
+                break;
+            }
+        }
+        result
     }
 
     fn eval_function_expression(
         &mut self,
         function_expression: &FunctionExpression,
-    ) -> Option<Object> {
+    ) -> EvaluatorResult<Object> {
         let params = function_expression
             .parameters
             .clone()
@@ -299,7 +350,7 @@ impl Evaluator {
             .map(|p| p.value.clone())
             .collect();
         let body = *function_expression.body.clone();
-        Some(Object::Function(FunctionObject {
+        Ok(Object::Function(FunctionObject {
             parameters: params,
             body,
             env: Rc::clone(&self.env),
@@ -309,13 +360,13 @@ impl Evaluator {
     fn eval_function_call_expression(
         &mut self,
         function_call_expression: &FunctionCallExpression,
-    ) -> Option<Object> {
+    ) -> EvaluatorResult<Object> {
         let function = self.eval_expression(&function_call_expression.function)?;
         let args = self.eval_expressions(&function_call_expression.arguments)?;
         self.apply_function(&function, &args)
     }
 
-    fn apply_function(&mut self, function: &Object, args: &Vec<Object>) -> Option<Object> {
+    fn apply_function(&mut self, function: &Object, args: &Vec<Object>) -> EvaluatorResult<Object> {
         match function {
             Object::Function(function) => {
                 let old_env = Rc::clone(&self.env);
@@ -328,26 +379,24 @@ impl Evaluator {
                 let evaluated = self.eval_statement(&function.body);
                 self.env = old_env;
                 match evaluated {
-                    Some(Object::Return(v)) => Some(*v),
-                    _ => None,
+                    Ok(Object::Return(v)) => Ok(*v),
+                    Ok(_) => Ok(Object::Null),
+                    Err(e) => Err(e),
                 }
             }
-            _ => {
-                println!("Function call error");
-                None
-            }
+            _ => Err(EvaluatorError::new(format!("Not a function: {}", function))),
         }
     }
 
-    fn eval_expressions(&mut self, expressions: &Vec<Expression>) -> Option<Vec<Object>> {
+    fn eval_expressions(&mut self, expressions: &Vec<Expression>) -> EvaluatorResult<Vec<Object>> {
         let mut result = Vec::new();
         for e in expressions {
             let evaluated = self.eval_expression(e);
             match evaluated {
-                Some(v) => result.push(v),
-                None => return None,
+                Ok(v) => result.push(v),
+                Err(e) => return Err(e),
             }
         }
-        Some(result)
+        Ok(result)
     }
 }

@@ -1,6 +1,6 @@
+use crate::evaluator::{EvaluatorError, EvaluatorResult};
 use crate::object::Object;
 use std::{cell::RefCell, collections::HashMap, rc::Rc};
-
 #[derive(Debug, Clone)]
 pub struct Environment {
     store: HashMap<String, Object>,
@@ -22,12 +22,15 @@ impl Environment {
         }
     }
 
-    pub fn get(&self, name: &str) -> Option<Object> {
+    pub fn get(&self, name: &str) -> EvaluatorResult<Object> {
         match self.store.get(name) {
-            Some(obj) => Some(obj.clone()),
+            Some(val) => Ok(val.clone()),
             None => match &self.outer {
                 Some(env) => env.borrow().get(name),
-                None => None,
+                None => Err(EvaluatorError::new(format!(
+                    "identifier not found: {}",
+                    name
+                ))),
             },
         }
     }

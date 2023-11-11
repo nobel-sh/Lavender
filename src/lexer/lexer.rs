@@ -56,7 +56,7 @@ impl Lexer {
             b'*' => self.add_token(TokenType::ASTERISK, None),
             b'\n' => {
                 self.line += 1;
-                self.column = 1;
+                self.column = 0;
             }
             b'/' => {
                 if self.match_char(b'/') {
@@ -116,7 +116,7 @@ impl Lexer {
     fn string(&mut self) {
         while self.peek_char() != b'"' && !self.is_at_end() {
             if self.peek_char() == b'\n' {
-                self.column = 1;
+                self.column = 0;
                 self.line += 1;
             }
             self.advance();

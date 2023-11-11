@@ -49,6 +49,7 @@ pub enum Expression {
     Identifier(Identifier),
     Literal(Literal),
     IfExpression(IfExpression),
+    WhileExpression(WhileExpression),
     PrefixExpression(PrefixExpression),
     InfixExpression(InfixExpression),
     FunctionExpression(FunctionExpression),
@@ -65,6 +66,7 @@ impl Display for Expression {
             Expression::InfixExpression(i) => write!(f, "{}", i),
             Expression::FunctionExpression(func) => write!(f, "{}", func),
             Expression::FunctionCallExpression(call) => write!(f, "{}", call),
+            Expression::WhileExpression(while_expr) => write!(f, "{}", while_expr),
         }
     }
 }
@@ -247,5 +249,22 @@ impl Display for FunctionCallExpression {
         }
         result.push_str(")");
         write!(f, "{}{}", self.function, result)
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct WhileExpression {
+    pub token: Token,
+    pub condition: Box<Expression>,
+    pub body: Box<Statement>,
+}
+
+impl Display for WhileExpression {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut result = String::from("while (");
+        result.push_str(&self.condition.to_string());
+        result.push_str(") ");
+        result.push_str(&self.body.to_string());
+        write!(f, "{}", result)
     }
 }
