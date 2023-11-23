@@ -11,7 +11,6 @@ use std::process::exit;
 use environment::Environment;
 use evaluator::Evaluator;
 use parser::Parser;
-// use token::Token;
 
 use crate::lexer::lexer::Lexer;
 fn main() -> () {
