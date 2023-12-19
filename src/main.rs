@@ -17,6 +17,7 @@ use crate::lexer::lexer::Lexer;
 fn main() -> () {
     let input = String::from(
         r#"
+        
 "#,
     )
     .bytes()

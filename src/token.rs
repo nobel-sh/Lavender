@@ -46,6 +46,8 @@ pub enum TokenType {
     OR,
     LET,
     RETURN,
+    DO,
+    END,
 
     // End of file.
     EOF,
@@ -128,6 +130,8 @@ lazy_static! {
         m.insert("or", TokenType::OR);
         m.insert("return", TokenType::RETURN);
         m.insert("let", TokenType::LET);
+        m.insert("do", TokenType::DO);
+        m.insert("end", TokenType::END);
         m
     };
 }

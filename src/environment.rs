@@ -35,7 +35,11 @@ impl Environment {
         }
     }
 
-    pub fn set(&mut self, name: String, val: &Object) -> Option<Object> {
+    pub fn set(&mut self, ident: Object, val: &Object) -> Option<Object> {
+        let name = match ident {
+            Object::Identifier(n) => n,
+            _ => return None,
+        };
         self.store.insert(name, val.clone())
     }
 }

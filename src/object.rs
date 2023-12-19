@@ -38,11 +38,17 @@ impl Display for Literal {
     }
 }
 
-#[derive(Clone)]
+// enum IdentType {
+//     Let,
+//     Const,
+// }
+
+#[derive(Debug, Clone)]
 pub enum Object {
     Literal(Literal),
     Function(FunctionObject),
     Return(Box<Object>),
+    Identifier(String),
     Null,
 }
 
@@ -54,19 +60,7 @@ impl Display for Object {
             Object::Return(obj) => {
                 write!(f, "return {}", obj)
             }
-            Object::Null => write!(f, "null"),
-        }
-    }
-}
-
-impl Debug for Object {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Object::Literal(lit) => write!(f, "{}", lit),
-            Object::Function(func) => write!(f, "{}", func),
-            Object::Return(obj) => {
-                write!(f, "return {}", obj)
-            }
+            Object::Identifier(id) => write!(f, "{}", id),
             Object::Null => write!(f, "null"),
         }
     }

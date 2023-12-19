@@ -51,6 +51,7 @@ type ParserInfixFunc = fn(&mut Parser, Expression) -> Result<Expression, ParserE
 #[derive(PartialOrd, PartialEq)]
 pub enum Precedence {
     LOWEST,
+    ASSIGN,
     EQUALS,
     LESSGREATER,
     SUM,
@@ -61,6 +62,7 @@ pub enum Precedence {
 
 impl Precedence {
     pub fn from_token_type(token_type: token::TokenType) -> Precedence {
+        // precedence from highest to lowest
         match token_type {
             token::TokenType::LPAREN => Precedence::CALL,
             token::TokenType::SLASH => Precedence::PRODUCT,
@@ -73,6 +75,7 @@ impl Precedence {
             token::TokenType::GREATEREQUAL => Precedence::LESSGREATER,
             token::TokenType::EQUALEQUAL => Precedence::EQUALS,
             token::TokenType::BANGEQUAL => Precedence::EQUALS,
+            token::TokenType::EQUAL => Precedence::ASSIGN,
             _ => Precedence::LOWEST,
         }
     }
@@ -173,6 +176,7 @@ impl Parser {
         }))
     }
 
+    // pratt parser
     fn parse_expression(&mut self, precedence: Precedence) -> Result<Expression, ParserError> {
         let prefix = self.parse_prefix().ok_or_else(|| {
             return ParserError::NoPrefixParseFunction {
@@ -254,7 +258,8 @@ impl Parser {
             | TokenType::LESS
             | TokenType::GREATER
             | TokenType::LESSEQUAL
-            | TokenType::GREATEREQUAL => Parser::parse_infix_expression,
+            | TokenType::GREATEREQUAL
+            | TokenType::EQUAL => Parser::parse_infix_expression,
             TokenType::LPAREN => Parser::parse_call_expression,
             _ => return None,
         })
@@ -304,7 +309,7 @@ impl Parser {
     fn parse_block_statement(&mut self) -> Result<Statement, ParserError> {
         let mut statements = Vec::new();
         self.next_token();
-        while !self.current_token_is(token::TokenType::RBRACE)
+        while !self.current_token_is(token::TokenType::END)
             && !self.current_token_is(token::TokenType::EOF)
         {
             let stmt = self.parse_statement();
@@ -321,23 +326,10 @@ impl Parser {
 
     fn parse_if_expression(&mut self) -> Result<Expression, ParserError> {
         self.next_token();
-        if !self.current_token_is(token::TokenType::LPAREN) {
-            return Err(ParserError::UnexpectedToken {
-                expected: TokenType::LPAREN,
-                got: self.current_token.token_type,
-            });
-        }
-        self.next_token();
         let if_condition = self.parse_expression(Precedence::LOWEST).unwrap();
-        if !self.expect_peek(token::TokenType::RPAREN) {
+        if !self.expect_peek(token::TokenType::DO) {
             return Err(ParserError::UnexpectedToken {
-                expected: TokenType::RPAREN,
-                got: self.peek_token.token_type,
-            });
-        }
-        if !self.expect_peek(token::TokenType::LBRACE) {
-            return Err(ParserError::UnexpectedToken {
-                expected: TokenType::LBRACE,
+                expected: TokenType::DO,
                 got: self.peek_token.token_type,
             });
         }
@@ -345,11 +337,10 @@ impl Parser {
         let mut alternative = None;
         if self.peek_token_is(token::TokenType::ELSE) {
             self.next_token();
-            if !self.expect_peek(token::TokenType::LBRACE)
-                && !self.peek_token_is(token::TokenType::IF)
+            if !self.expect_peek(token::TokenType::DO) && !self.peek_token_is(token::TokenType::IF)
             {
                 return Err(ParserError::UnexpectedToken {
-                    expected: TokenType::LBRACE,
+                    expected: TokenType::DO,
                     got: self.peek_token.token_type,
                 });
             }
@@ -379,9 +370,9 @@ impl Parser {
                 got: self.peek_token.token_type,
             });
         }
-        if !self.expect_peek(token::TokenType::LBRACE) {
+        if !self.expect_peek(token::TokenType::DO) {
             return Err(ParserError::UnexpectedToken {
-                expected: TokenType::LBRACE,
+                expected: TokenType::DO,
                 got: self.peek_token.token_type,
             });
         }
@@ -402,9 +393,9 @@ impl Parser {
             });
         }
         let parameters = self.parse_function_parameters().unwrap();
-        if !self.expect_peek(token::TokenType::LBRACE) {
+        if !self.expect_peek(token::TokenType::DO) {
             return Err(ParserError::UnexpectedToken {
-                expected: TokenType::LBRACE,
+                expected: TokenType::DO,
                 got: self.peek_token.token_type,
             });
         }

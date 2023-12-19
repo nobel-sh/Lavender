@@ -64,10 +64,8 @@ impl Evaluator {
 
     fn eval_let_statement(&mut self, let_statement: &LetStatement) -> EvaluatorResult<Object> {
         let val = self.eval_expression(&let_statement.value)?;
-
-        self.env
-            .borrow_mut()
-            .set(let_statement.name.value.clone(), &val);
+        let ident = Object::Identifier(let_statement.name.value.clone());
+        self.env.borrow_mut().set(ident, &val);
         Ok(Object::Null)
     }
 
@@ -186,7 +184,12 @@ impl Evaluator {
     ) -> EvaluatorResult<Object> {
         let left = self.eval_expression(&infix_expression.left)?;
         let right = self.eval_expression(&infix_expression.right)?;
-        self.eval_infix_expression_operator(&infix_expression.operator, &left, &right)
+        let operator = &infix_expression.operator;
+        if operator == "=" {
+            return self
+                .eval_assignment_expression(&infix_expression.left, &infix_expression.right);
+        }
+        self.eval_infix_expression_operator(&operator, &left, &right)
     }
 
     fn eval_infix_expression_operator(
@@ -211,6 +214,25 @@ impl Evaluator {
             _ => Err(EvaluatorError::new(format!(
                 "Illegal operation : {} {} {}",
                 left, operator, right
+            ))),
+        }
+    }
+
+    fn eval_assignment_expression(
+        &mut self,
+        left: &Box<Expression>,
+        right: &Box<Expression>,
+    ) -> EvaluatorResult<Object> {
+        let right = self.eval_expression(&right)?;
+        match *left.clone() {
+            Expression::Identifier(identifier) => {
+                let ident = Object::Identifier(identifier.value.clone());
+                self.env.borrow_mut().set(ident, &right);
+                Ok(right)
+            }
+            _ => Err(EvaluatorError::new(format!(
+                "Illegal assignment target: {}",
+                left
             ))),
         }
     }
@@ -373,7 +395,8 @@ impl Evaluator {
                 let mut extended_env =
                     Environment::new_enclosed_environment(Rc::clone(&function.env));
                 for (i, param) in function.parameters.iter().enumerate() {
-                    extended_env.set(param.clone(), &args[i]);
+                    let ident = Object::Identifier(param.clone());
+                    extended_env.set(ident, &args[i]);
                 }
                 self.env = Rc::new(RefCell::new(extended_env));
                 let evaluated = self.eval_statement(&function.body);
