@@ -33,7 +33,7 @@ impl Display for Literal {
             Literal::Integer(i) => write!(f, "{}", i),
             Literal::Float(fl) => write!(f, "{}", fl),
             Literal::Boolean(b) => write!(f, "{}", b),
-            Literal::String(s) => write!(f, "{}", s),
+            Literal::String(s) => write!(f, "\"{}\"", s),
         }
     }
 }

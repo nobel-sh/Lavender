@@ -4,7 +4,6 @@ pub mod evaluator;
 pub mod lexer;
 pub mod object;
 pub mod parser;
-pub mod token;
 
 use std::process::exit;
 
@@ -17,7 +16,11 @@ use crate::lexer::lexer::Lexer;
 fn main() -> () {
     let input = String::from(
         r#"
-        
+        let x = 5;
+        while (x > 3) do
+            x = x - 1;
+        end
+        x
 "#,
     )
     .bytes()
@@ -32,8 +35,7 @@ fn main() -> () {
         }
     };
     let program = Parser::new(tokens).parse_program();
-    println!("**********");
     let env = Environment::new();
     let result = Evaluator::new(env).eval(&program);
-    println!("{:?}", result);
+    println!("{}", result.unwrap());
 }

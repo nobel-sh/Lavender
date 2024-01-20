@@ -1,6 +1,6 @@
 use std::fmt::Display;
 
-use crate::token::Token;
+use crate::lexer::token::Token;
 
 #[derive(Debug)]
 pub enum Node {

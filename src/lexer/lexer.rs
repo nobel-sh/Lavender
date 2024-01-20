@@ -1,4 +1,4 @@
-use crate::token::{Literal, Token, TokenType, KEYWORDS_MAP};
+use crate::lexer::token::{Literal ,Token, TokenType, KEYWORDS_MAP};
 
 pub struct Lexer {
     input: Vec<u8>,
@@ -128,7 +128,6 @@ impl Lexer {
         self.advance();
         let value = self.input[self.start + 1..self.current - 1].to_vec();
         let string_literal = String::from_utf8(value).unwrap();
-
         self.add_token(TokenType::STRING, Some(Literal::STRING(string_literal)));
     }
 

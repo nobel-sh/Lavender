@@ -314,6 +314,7 @@ impl Evaluator {
         left: &str,
         right: &str,
     ) -> EvaluatorResult<Object> {
+        println!("{} {} {}", left, operator, right);
         match operator {
             "+" => Ok(Object::Literal(String(format!("{}{}", left, right)))),
             _ => Err(EvaluatorError::new(format!(
